@@ -103,7 +103,7 @@ class Medium2Dev:
         content_div = soup.new_tag('div')
         
         # Find all the content sections (paragraphs, headings, code blocks, images)
-        content_elements = article_tag.find_all(['p', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'pre', 'figure', 'img', 'blockquote', 'ul', 'ol', 'div'])
+        content_elements = article_tag.find_all(['p', 'h2', 'h3', 'h4', 'pre', 'figure', 'img', 'blockquote', 'ul', 'ol', 'div'])
         
         # Add the content elements to our new div
         for element in content_elements:
@@ -229,17 +229,6 @@ class Medium2Dev:
             if element:
                 element.decompose()
                 
-        # Process code blocks to ensure # comments are preserved
-        for pre in content.find_all('pre'):
-            # Add a special marker to all hash symbols in code blocks
-            code_element = pre.find('code')
-            if code_element:
-                code_text = str(code_element)
-                # Replace # with a special marker in code
-                code_text = code_text.replace('#', '§CODEHASH§')
-                new_code = BeautifulSoup(code_text, 'html.parser')
-                code_element.replace_with(new_code.find('code'))
-
         # Convert to markdown
         h2t = html2text.HTML2Text()
         h2t.body_width = 0  # Don't wrap lines
@@ -249,9 +238,6 @@ class Medium2Dev:
         h2t.ignore_tables = False
         
         markdown = h2t.handle(str(content))
-        
-        # Restore hash symbols in code blocks
-        markdown = re.sub(r'```([^`]*?)§CODEHASH§', r'```\1#', markdown)
         
         # Post-process markdown
         # Fix code blocks
@@ -268,6 +254,21 @@ class Medium2Dev:
         
         # Fix headings (ensure proper spacing)
         markdown = re.sub(r'(?<!\n)#{1,6} ', r'\n\g<0>', markdown)
+        
+        # Handle headers with decorative elements like "# ----- Main Workflow ----- #"
+        markdown = re.sub(r'#\s*-+\s*(.*?)\s*-+\s*#', r'# \1', markdown)
+        
+        # Handle section titles with decorative characters without hash symbols
+        markdown = re.sub(r'(?<!\n)\n(-{3,}|={3,})\s*(.*?)\s*(-{3,}|={3,})', r'\n## \2', markdown)
+        
+        # Handle standalone lines that look like headers (e.g., "Setting Up Nova Act", "How to run my nova-act?")
+        markdown = re.sub(r'\n\n([A-Z][^.\n]*(?:\?|\.|:))\n\n', r'\n\n## \1\n\n', markdown)
+        
+        # Handle numbered headers (e.g., "1. Hotel Search on Vegas.com")
+        markdown = re.sub(r'\n\n(\d+\.\s+[A-Z][^.\n]*(?:\?|\.|:))\n\n', r'\n\n### \1\n\n', markdown)
+        
+        # Handle short sentences that look like headers but don't have ending punctuation
+        markdown = re.sub(r'\n\n([A-Z][^.\n]{1,60})\n\n(?![#*])', r'\n\n## \1\n\n', markdown)
         
         # Remove Medium-specific footer text and links
         markdown = re.sub(r'\n\s*\[.*?\]\(https?://medium\.com/.*?\)\s*\n', '\n\n', markdown)
