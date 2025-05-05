@@ -103,7 +103,7 @@ class Medium2Dev:
         content_div = soup.new_tag('div')
         
         # Find all the content sections (paragraphs, headings, code blocks, images)
-        content_elements = article_tag.find_all(['p', 'h2', 'h3', 'h4', 'pre', 'figure', 'img', 'blockquote', 'ul', 'ol', 'div'])
+        content_elements = article_tag.find_all(['p', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'pre', 'figure', 'img', 'blockquote', 'ul', 'ol', 'div'])
         
         # Add the content elements to our new div
         for element in content_elements:
@@ -236,6 +236,38 @@ class Medium2Dev:
         h2t.ignore_images = False
         h2t.ignore_emphasis = False
         h2t.ignore_tables = False
+        h2t.single_line_break = True  # Helps with header recognition
+        h2t.unicode_snob = True  # Use unicode characters
+        h2t.wrap_links = False  # Don't wrap links
+        h2t.use_automatic_links = True  # Use automatic links
+        
+        # Mark headings for proper conversion
+        for heading in content.find_all(['h1', 'h2', 'h3', 'h4', 'h5', 'h6']):
+            if heading.string:
+                # Ensure heading tags have proper format to be recognized
+                heading_text = heading.string.strip()
+                heading.clear()
+                heading.append(heading_text)
+                
+        # Look for strong paragraphs that might be disguised headers
+        for para in content.find_all('p'):
+            # Check if paragraph contains strong tag that encompasses all text
+            strong_tag = para.find('strong')
+            if strong_tag and len(para.get_text().strip()) < 100 and para.get_text().strip() == strong_tag.get_text().strip():
+                # This appears to be a header styled as a paragraph with strong tag
+                # Convert it to an h3 tag to ensure it gets processed as a header
+                header_text = para.get_text().strip()
+                new_heading = content.new_tag('h3')
+                new_heading.string = header_text
+                para.replace_with(new_heading)
+            
+            # Check for special Medium header classes
+            if para.get('class') and any(cls in str(para.get('class')) for cls in ['graf--title', 'graf--subtitle', 'graf--leading']):
+                # This is likely a header element styled as a paragraph
+                header_text = para.get_text().strip()
+                new_heading = content.new_tag('h2')
+                new_heading.string = header_text
+                para.replace_with(new_heading)
         
         markdown = h2t.handle(str(content))
         
