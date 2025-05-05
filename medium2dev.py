@@ -229,6 +229,17 @@ class Medium2Dev:
             if element:
                 element.decompose()
                 
+        # Process code blocks to ensure # comments are preserved
+        for pre in content.find_all('pre'):
+            # Add a special marker to all hash symbols in code blocks
+            code_element = pre.find('code')
+            if code_element:
+                code_text = str(code_element)
+                # Replace # with a special marker in code
+                code_text = code_text.replace('#', '§CODEHASH§')
+                new_code = BeautifulSoup(code_text, 'html.parser')
+                code_element.replace_with(new_code.find('code'))
+
         # Convert to markdown
         h2t = html2text.HTML2Text()
         h2t.body_width = 0  # Don't wrap lines
@@ -236,40 +247,11 @@ class Medium2Dev:
         h2t.ignore_images = False
         h2t.ignore_emphasis = False
         h2t.ignore_tables = False
-        h2t.single_line_break = True  # Helps with header recognition
-        h2t.unicode_snob = True  # Use unicode characters
-        h2t.wrap_links = False  # Don't wrap links
-        h2t.use_automatic_links = True  # Use automatic links
-        
-        # Mark headings for proper conversion
-        for heading in content.find_all(['h1', 'h2', 'h3', 'h4', 'h5', 'h6']):
-            if heading.string:
-                # Ensure heading tags have proper format to be recognized
-                heading_text = heading.string.strip()
-                heading.clear()
-                heading.append(heading_text)
-                
-        # Look for strong paragraphs that might be disguised headers
-        for para in content.find_all('p'):
-            # Check if paragraph contains strong tag that encompasses all text
-            strong_tag = para.find('strong')
-            if strong_tag and len(para.get_text().strip()) < 100 and para.get_text().strip() == strong_tag.get_text().strip():
-                # This appears to be a header styled as a paragraph with strong tag
-                # Convert it to an h3 tag to ensure it gets processed as a header
-                header_text = para.get_text().strip()
-                new_heading = content.new_tag('h3')
-                new_heading.string = header_text
-                para.replace_with(new_heading)
-            
-            # Check for special Medium header classes
-            if para.get('class') and any(cls in str(para.get('class')) for cls in ['graf--title', 'graf--subtitle', 'graf--leading']):
-                # This is likely a header element styled as a paragraph
-                header_text = para.get_text().strip()
-                new_heading = content.new_tag('h2')
-                new_heading.string = header_text
-                para.replace_with(new_heading)
         
         markdown = h2t.handle(str(content))
+        
+        # Restore hash symbols in code blocks
+        markdown = re.sub(r'```([^`]*?)§CODEHASH§', r'```\1#', markdown)
         
         # Post-process markdown
         # Fix code blocks
