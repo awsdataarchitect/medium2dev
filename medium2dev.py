@@ -103,7 +103,20 @@ class Medium2Dev:
         content_div = soup.new_tag('div')
         
         # Find all the content sections (paragraphs, headings, code blocks, images)
-        content_elements = article_tag.find_all(['p', 'h2', 'h3', 'h4', 'pre', 'figure', 'img', 'blockquote', 'ul', 'ol', 'div'])
+        content_elements = article_tag.find_all(['p', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'pre', 'figure', 'img', 'blockquote', 'ul', 'ol', 'div'])
+        
+        # Pre-process content to convert Medium's bold text headers to actual headers
+        for element in article_tag.find_all('strong'):
+            parent = element.parent
+            if parent and parent.name == 'p' and len(parent.contents) == 1:
+                text = element.get_text().strip()
+                # Check if this looks like a header (not too long)
+                if len(text) < 100 and not re.search(r'^\d+\s*$', text):
+                    # Create a new h2 element
+                    h2 = soup.new_tag('h2')
+                    h2.string = text
+                    # Replace the parent paragraph with our new h2
+                    parent.replace_with(h2)
         
         # Add the content elements to our new div
         for element in content_elements:
@@ -254,21 +267,6 @@ class Medium2Dev:
         
         # Fix headings (ensure proper spacing)
         markdown = re.sub(r'(?<!\n)#{1,6} ', r'\n\g<0>', markdown)
-        
-        # Handle headers with decorative elements like "# ----- Main Workflow ----- #"
-        markdown = re.sub(r'#\s*-+\s*(.*?)\s*-+\s*#', r'# \1', markdown)
-        
-        # Handle section titles with decorative characters without hash symbols
-        markdown = re.sub(r'(?<!\n)\n(-{3,}|={3,})\s*(.*?)\s*(-{3,}|={3,})', r'\n## \2', markdown)
-        
-        # Handle standalone lines that look like headers (e.g., "Setting Up Nova Act", "How to run my nova-act?")
-        markdown = re.sub(r'\n\n([A-Z][^.\n]*(?:\?|\.|:))\n\n', r'\n\n## \1\n\n', markdown)
-        
-        # Handle numbered headers (e.g., "1. Hotel Search on Vegas.com")
-        markdown = re.sub(r'\n\n(\d+\.\s+[A-Z][^.\n]*(?:\?|\.|:))\n\n', r'\n\n### \1\n\n', markdown)
-        
-        # Handle short sentences that look like headers but don't have ending punctuation
-        markdown = re.sub(r'\n\n([A-Z][^.\n]{1,60})\n\n(?![#*])', r'\n\n## \1\n\n', markdown)
         
         # Remove Medium-specific footer text and links
         markdown = re.sub(r'\n\s*\[.*?\]\(https?://medium\.com/.*?\)\s*\n', '\n\n', markdown)
