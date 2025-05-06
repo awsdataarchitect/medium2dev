@@ -103,20 +103,7 @@ class Medium2Dev:
         content_div = soup.new_tag('div')
         
         # Find all the content sections (paragraphs, headings, code blocks, images)
-        content_elements = article_tag.find_all(['p', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'pre', 'figure', 'img', 'blockquote', 'ul', 'ol', 'div'])
-        
-        # Pre-process content to convert Medium's bold text headers to actual headers
-        for element in article_tag.find_all('strong'):
-            parent = element.parent
-            if parent and parent.name == 'p' and len(parent.contents) == 1:
-                text = element.get_text().strip()
-                # Check if this looks like a header (not too long)
-                if len(text) < 100 and not re.search(r'^\d+\s*$', text):
-                    # Create a new h2 element
-                    h2 = soup.new_tag('h2')
-                    h2.string = text
-                    # Replace the parent paragraph with our new h2
-                    parent.replace_with(h2)
+        content_elements = article_tag.find_all(['p', 'h2', 'h3', 'h4', 'pre', 'figure', 'img', 'blockquote', 'ul', 'ol', 'div'])
         
         # Add the content elements to our new div
         for element in content_elements:
@@ -245,6 +232,8 @@ class Medium2Dev:
         # Convert to markdown
         h2t = html2text.HTML2Text()
         h2t.body_width = 0  # Don't wrap lines
+        h2t.backquote_code_style = True  # Use fenced code blocks
+        h2t.escape_snob = True  # Escape Markdown characters
         h2t.ignore_links = False
         h2t.ignore_images = False
         h2t.ignore_emphasis = False
