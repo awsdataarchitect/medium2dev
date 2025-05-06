@@ -233,6 +233,8 @@ class Medium2Dev:
         # Convert to markdown
         h2t = html2text.HTML2Text()
         h2t.body_width = 0  # Don't wrap lines
+        h2t.backquote_code_style = True  # Use fenced code blocks
+        h2t.escape_snob = True  # Escape Markdown characters
         h2t.ignore_links = False
         h2t.ignore_images = False
         h2t.ignore_emphasis = False
