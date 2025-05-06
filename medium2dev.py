@@ -228,12 +228,21 @@ class Medium2Dev:
         for element in content.select('button, .buttonSet, .js-actionRecommend, .js-postMetaLockup'):
             if element:
                 element.decompose()
+        
+        # Convert strong text that stands alone in a paragraph to proper headings
+        # This handles Medium's styling of using bold text as section headings
+        for strong in content.find_all('strong'):
+            # Check if the strong tag is the only content in its parent paragraph
+            parent = strong.parent
+            if parent and parent.name == 'p' and len(parent.get_text().strip()) == len(strong.get_text().strip()):
+                # Create a new h3 tag with the same content
+                heading = content.new_tag('h3')
+                heading.string = strong.string
+                parent.replace_with(heading)
                 
         # Convert to markdown
         h2t = html2text.HTML2Text()
         h2t.body_width = 0  # Don't wrap lines
-        h2t.backquote_code_style = True  # Use fenced code blocks
-        h2t.escape_snob = True  # Escape Markdown characters
         h2t.ignore_links = False
         h2t.ignore_images = False
         h2t.ignore_emphasis = False
