@@ -103,16 +103,17 @@ class Medium2Dev:
         content_div = soup.new_tag('div')
         
         # Find all the content sections (paragraphs, headings, code blocks, images)
-        content_elements = article_tag.find_all(['p', 'h2', 'h3', 'h4', 'pre', 'figure', 'img', 'blockquote', 'ul', 'ol', 'div'])
+        # Make sure to include all header levels (h1-h6)
+        content_elements = article_tag.find_all(['p', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'pre', 'figure', 'img', 'blockquote', 'ul', 'ol', 'div'])
         
         # Add the content elements to our new div
         for element in content_elements:
             # Skip elements that are likely part of the author byline or metadata
-            if any(cls in str(element.get('class', [])) for cls in ['postMetaLockup', 'graf--authorName', 'authorLockup']):
+            if element.name not in ['h1', 'h2', 'h3', 'h4', 'h5', 'h6'] and any(cls in str(element.get('class', [])) for cls in ['postMetaLockup', 'graf--authorName', 'authorLockup']):
                 continue
                 
             # Skip elements with author info, claps, etc.
-            if element.find(string=re.compile(r'clap|follow|min read|sign up|bookmark|Listen|Share')):
+            if element.name not in ['h1', 'h2', 'h3', 'h4', 'h5', 'h6'] and element.find(string=re.compile(r'clap|follow|min read|sign up|bookmark|Listen|Share')):
                 continue
                 
             # Skip elements that just contain "--" or numbers at the beginning
@@ -124,7 +125,7 @@ class Medium2Dev:
                 continue
                 
             # Skip elements that contain "In Plain English" footer
-            if element.find(string=re.compile(r'In Plain English|Thank you for being a part of')):
+            if element.name not in ['h1', 'h2', 'h3', 'h4', 'h5', 'h6'] and element.find(string=re.compile(r'In Plain English|Thank you for being a part of')):
                 continue
                 
             # Skip elements that just contain "·" character
@@ -228,17 +229,6 @@ class Medium2Dev:
         for element in content.select('button, .buttonSet, .js-actionRecommend, .js-postMetaLockup'):
             if element:
                 element.decompose()
-        
-        # Convert strong text that stands alone in a paragraph to proper headings
-        # This handles Medium's styling of using bold text as section headings
-        for strong in content.find_all('strong'):
-            # Check if the strong tag is the only content in its parent paragraph
-            parent = strong.parent
-            if parent and parent.name == 'p' and len(parent.get_text().strip()) == len(strong.get_text().strip()):
-                # Create a new h3 tag with the same content
-                heading = content.new_tag('h3')
-                heading.string = strong.string
-                parent.replace_with(heading)
                 
         # Convert to markdown
         h2t = html2text.HTML2Text()
