@@ -246,6 +246,9 @@ class Medium2Dev:
         # Fix code blocks
         markdown = re.sub(r'```\n\s*```', '', markdown)
         
+        # Convert level one headings to level two headings
+        markdown = re.sub(r'^# (.+)$', r'## \1', markdown, flags=re.MULTILINE)
+        
         # Fix image paths
         def repl(match):
             path = match.group(1)
